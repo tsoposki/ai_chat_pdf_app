@@ -23,7 +23,7 @@ const ChatPage = async ({ params }: ChatPageProps) => {
   return (
     <div className="flex">
       <PDFViewer url={s3Url}/>
-      <Chat />
+      <Chat document={document} />
     </div>
   );
 };

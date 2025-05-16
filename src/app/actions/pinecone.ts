@@ -6,8 +6,8 @@ import { Document } from "langchain/document";
 import { CharacterTextSplitter } from "langchain/text_splitter";
 import { Pinecone } from "@pinecone-database/pinecone";
 import { PineconeStore } from "@langchain/pinecone";
-import { HuggingFaceInferenceEmbeddings } from "@langchain/community/embeddings/hf";
 import { getS3Url } from "./s3";
+import { OpenAIEmbeddings } from "@langchain/openai";
 
 export const embedPDFToPinecone = async (fileKey: string) => {
   const { userId } = await auth();
@@ -53,7 +53,7 @@ export const embedPDFToPinecone = async (fileKey: string) => {
   const index = pinecone.index(process.env.PINECONE_INDEX!);
 
   // Step #5 - Embed and store the documents in Pinecone
-  await PineconeStore.fromDocuments(splitDocs, new HuggingFaceInferenceEmbeddings({ model: "BAAI/bge-small-en-v1.5", apiKey: process.env.HUGGINGFACE_API_KEY! }), {
+  await PineconeStore.fromDocuments(splitDocs, new OpenAIEmbeddings(), {
     pineconeIndex: index,
     namespace: fileKey,
   });
@@ -76,12 +76,10 @@ export const deletePineconeNamespace = async (fileKey: string) => {
 
   const index = pinecone.index(process.env.PINECONE_INDEX!);
 
-  const vectorStore = await PineconeStore.fromExistingIndex(new HuggingFaceInferenceEmbeddings({ model: "BAAI/bge-small-en-v1.5", apiKey: process.env.HUGGINGFACE_API_KEY! }), {
+  const vectorStore = await PineconeStore.fromExistingIndex(new OpenAIEmbeddings(), {
     pineconeIndex: index,
     namespace: fileKey,
   });
-
-
 
   await vectorStore.delete({
     filter: {

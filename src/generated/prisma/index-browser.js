@@ -130,6 +130,14 @@ exports.Prisma.DocumentScalarFieldEnum = {
   createdAt: 'createdAt'
 };
 
+exports.Prisma.MessageScalarFieldEnum = {
+  id: 'id',
+  role: 'role',
+  content: 'content',
+  documentId: 'documentId',
+  createdAt: 'createdAt'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -139,10 +147,14 @@ exports.Prisma.QueryMode = {
   default: 'default',
   insensitive: 'insensitive'
 };
-
+exports.Role = exports.$Enums.Role = {
+  user: 'user',
+  assistant: 'assistant'
+};
 
 exports.Prisma.ModelName = {
-  Document: 'Document'
+  Document: 'Document',
+  Message: 'Message'
 };
 
 /**
