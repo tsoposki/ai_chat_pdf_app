@@ -1,11 +1,16 @@
 import Script from "next/script";
 import * as React from "react";
 
-declare global {
+declare module "react" {
   namespace JSX {
     interface IntrinsicElements {
       "stripe-pricing-table": React.DetailedHTMLProps<
-        React.HTMLAttributes<HTMLElement>,
+        React.HTMLAttributes<HTMLElement> & {
+          "pricing-table-id"?: string;
+          "publishable-key"?: string;
+          "client-reference-id"?: string;
+          "customer-email"?: string;
+        },
         HTMLElement
       >;
     }

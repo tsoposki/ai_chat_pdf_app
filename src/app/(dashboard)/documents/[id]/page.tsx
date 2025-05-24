@@ -5,9 +5,9 @@ import { redirect } from "next/navigation";
 import { getS3Url } from "@/app/actions/s3";
 
 interface ChatPageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 const ChatPage = async ({ params }: ChatPageProps) => {
@@ -22,7 +22,7 @@ const ChatPage = async ({ params }: ChatPageProps) => {
 
   return (
     <div className="flex">
-      <PDFViewer url={s3Url}/>
+      <PDFViewer url={s3Url} />
       <Chat document={document} />
     </div>
   );
