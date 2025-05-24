@@ -21,16 +21,16 @@ export const generatePreSignedURL = async (fileName: string, fileType: string) =
   }
 
   const client = new S3Client({
-    region: process.env.NEXT_PUBLIC_S3_BUCKET_REGION,
+    region: process.env.S3_BUCKET_REGION,
     credentials: {
-      accessKeyId: process.env.NEXT_PUBLIC_S3_ACCESS_KEY_ID!,
-      secretAccessKey: process.env.NEXT_PUBLIC_S3_SECRET_ACCESS_KEY_ID!,
+      accessKeyId: process.env.S3_ACCESS_KEY_ID!,
+      secretAccessKey: process.env.S3_SECRET_ACCESS_KEY_ID!,
     },
   });
 
   const fileKey = `users/${userId}/${Date.now()}-${fileName}`;
   const putCommand = new PutObjectCommand({
-    Bucket: process.env.NEXT_PUBLIC_S3_BUCKET_NAME,
+    Bucket: process.env.S3_BUCKET_NAME,
     Key: fileKey,
     ContentType: fileType,
   });
@@ -55,15 +55,15 @@ export const deleteS3Object = async (fileKey: string) => {
   }
 
   const client = new S3Client({
-    region: process.env.NEXT_PUBLIC_S3_BUCKET_REGION,
+    region: process.env.S3_BUCKET_REGION,
     credentials: {
-      accessKeyId: process.env.NEXT_PUBLIC_S3_ACCESS_KEY_ID!,
-      secretAccessKey: process.env.NEXT_PUBLIC_S3_SECRET_ACCESS_KEY_ID!,
+      accessKeyId: process.env.S3_ACCESS_KEY_ID!,
+      secretAccessKey: process.env.S3_SECRET_ACCESS_KEY_ID!,
     },
   });
 
   const deleteCommand = new DeleteObjectCommand({
-    Bucket: process.env.NEXT_PUBLIC_S3_BUCKET_NAME,
+    Bucket: process.env.S3_BUCKET_NAME,
     Key: fileKey,
   });
 
@@ -73,5 +73,5 @@ export const deleteS3Object = async (fileKey: string) => {
 }
 
 export const getS3Url = async (fileKey: string) => {
-  return `https://${process.env.NEXT_PUBLIC_S3_BUCKET_NAME}.s3.${process.env.NEXT_PUBLIC_S3_BUCKET_REGION}.amazonaws.com/${fileKey}`;
+  return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.S3_BUCKET_REGION}.amazonaws.com/${fileKey}`;
 }
