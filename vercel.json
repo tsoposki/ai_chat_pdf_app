@@ -6,8 +6,5 @@
     "src/app/api/**/*.ts": {
       "maxDuration": 30
     }
-  },
-  "env": {
-    "BASE_URL": "https://your-domain.vercel.app"
   }
 } 

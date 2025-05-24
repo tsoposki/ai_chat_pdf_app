@@ -34,8 +34,8 @@ const PricingModal = async () => {
         <PricingTable
           clientReferenceId={user.id}
           customerEmail={email}
-          pricingTableId="prctbl_1RQp8ePRjEovzfugqIFi3p5Q"
-          publishableKey="pk_test_51RQkMPPRjEovzfugEDkiGN33rMo1ast3zaRz4APqs6Xw7HzibmHBxACCOHpYRPNrBhQNhLVdOf7NHXIr4dM2r0kw00nDndu2yb"
+          pricingTableId={process.env.STRIPE_PRICING_TABLE_ID!}
+          publishableKey={process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!}
         />
 
       </DialogContent>
