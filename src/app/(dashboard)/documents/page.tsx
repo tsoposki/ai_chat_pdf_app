@@ -1,5 +1,5 @@
 import UploadPDF from "@/components/UploadPDF";
-import { File, Pencil, Trash2 } from "lucide-react";
+import { File } from "lucide-react";
 import Link from "next/link";
 
 import prismadb from "@/lib/prisma";

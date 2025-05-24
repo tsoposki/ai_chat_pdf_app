@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "npm run dev",
-    "lint": "next lint"
+    "lint": "next lint",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@ai-sdk/langchain": "~1.0.0-canary.12",
@@ -38,9 +39,11 @@
     "react-dom": "~19.1.0",
     "react-dropzone": "~14.3.8",
     "react-toastify": "~11.0.5",
+    "stripe": "~18.1.1",
     "tailwind-merge": "~3.3.0",
     "tailwindcss-animate": "~1.0.7",
-    "typewriter-effect": "~2.21.0"
+    "typewriter-effect": "~2.21.0",
+    "vercel": "~42.1.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "~4.1.7",

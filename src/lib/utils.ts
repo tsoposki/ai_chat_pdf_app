@@ -39,9 +39,7 @@ export function formatBytes(bytes: number , decimals: number = 2): string {
 }
 
 export function scrollToBottom(messagesEndRef: React.RefObject<HTMLDivElement | null>) {
-  console.log("scrollToBottom start", messagesEndRef);
   if (messagesEndRef?.current) {
     messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
-    console.log("scrollToBottom end");
   }
 }

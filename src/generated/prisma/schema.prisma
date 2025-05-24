@@ -42,3 +42,12 @@ model Message {
 
   @@index([documentId])
 }
+
+model Subscription {
+  id                     String    @id @default(uuid())
+  userId                 String    @unique
+  stripeCustomerId       String?   @unique
+  stripeSubscriptionId   String?   @unique
+  stripePriceId          String?
+  stripeCurrentPeriodEnd DateTime?
+}

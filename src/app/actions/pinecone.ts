@@ -8,12 +8,18 @@ import { Pinecone } from "@pinecone-database/pinecone";
 import { PineconeStore } from "@langchain/pinecone";
 import { getS3Url } from "./s3";
 import { OpenAIEmbeddings } from "@langchain/openai";
+import { needToUpgrade } from "@/lib/subscription";
 
 export const embedPDFToPinecone = async (fileKey: string) => {
   const { userId } = await auth();
 
   if (!userId) {
     throw new Error("Unauthorized");
+  }
+
+  const quotaReached = await needToUpgrade();
+  if (quotaReached) {
+    throw new Error("Reached free quota. Please upgrade.");
   }
 
   let pdfFile = await fetch(await getS3Url(fileKey));

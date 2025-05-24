@@ -5,12 +5,18 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import prismadb from "@/lib/prisma";
+import { needToUpgrade } from "@/lib/subscription";
 
 export const createDocument = async (fileName: string, fileSize: number, fileKey: string) => {
     const user = await currentUser();
 
     if (!user?.id || !user.firstName) {
       throw new Error("Unauthorized");
+    }
+
+    const quotaReached = await needToUpgrade();
+    if (quotaReached) {
+      throw new Error("Reached free quota. Please upgrade.");
     }
 
     const document = await prismadb.document.create({
