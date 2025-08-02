@@ -45,6 +45,20 @@ export const Chat = ({ document }: ChatProps) => {
                 <div className="text-sm font-light overflow-hidden leading-7">{message.content}</div>
               </div>
             ))}
+            
+            {/* AI Thinking Loader */}
+            {isLoading && (
+              <div className="p-6 w-full flex items-start gap-x-8 bg-[#faf9f6]">
+                <div className="w-4">
+                  <Bot className="bg-[#062427] text-white rounded-sm p-1" />
+                </div>
+                <div className="flex items-center gap-x-2">
+                  <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
+                  <span className="text-sm font-light text-gray-500 italic">AI is thinking...</span>
+                </div>
+              </div>
+            )}
+            
             <div ref={messagesEndRef} />
           </div>
         </div>

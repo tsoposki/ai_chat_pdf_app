@@ -35,7 +35,7 @@ const PricingModal = async () => {
           clientReferenceId={user.id}
           customerEmail={email}
           pricingTableId={process.env.STRIPE_PRICING_TABLE_ID!}
-          publishableKey={process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!}
+          publishableKey={process.env.STRIPE_PUBLISHABLE_KEY!}
         />
 
       </DialogContent>

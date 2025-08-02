@@ -59,13 +59,13 @@ export const isMaxFreeDocuments = async () => {
 
   if (!user) return false;
 
-  const doucments = await prismadb.document.findMany({
+  const documents = await prismadb.document.findMany({
     where: {
       userId: user.id,
     },
   });
 
-  return doucments?.length >= MAX_FREE_DOCUMENTS;
+  return documents?.length >= MAX_FREE_DOCUMENTS;
 }
 
 export const needToUpgrade = async () => {
