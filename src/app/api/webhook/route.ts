@@ -27,9 +27,18 @@ export async function POST(request: NextRequest) {
     if (session.subscription) {
       const subscription = await stripe.subscriptions.retrieve(session.subscription as string) as Stripe.Subscription;
 
-      await prismadb.subscription.create({
-        data: {
+      await prismadb.subscription.upsert({
+        where: {
           userId: session.client_reference_id,
+        },
+        create: {
+          userId: session.client_reference_id,
+          stripeSubscriptionId: subscription.id,
+          stripeCustomerId: subscription.customer as string,
+          stripePriceId: subscription.items.data[0].price.id,
+          stripeCurrentPeriodEnd: new Date(subscription.items.data[0].current_period_end * 1000),
+        },
+        update: {
           stripeSubscriptionId: subscription.id,
           stripeCustomerId: subscription.customer as string,
           stripePriceId: subscription.items.data[0].price.id,
