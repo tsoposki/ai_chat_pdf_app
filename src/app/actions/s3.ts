@@ -4,6 +4,7 @@ import { auth } from "@clerk/nextjs/server";
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { needToUpgrade } from "@/lib/subscription";
+import { sanitizeFileName } from "@/lib/utils";
 export const generatePreSignedURL = async (fileName: string, fileType: string) => {
   const { userId } = await auth();
 
@@ -28,7 +29,8 @@ export const generatePreSignedURL = async (fileName: string, fileType: string) =
     },
   });
 
-  const fileKey = `users/${userId}/${Date.now()}-${fileName}`;
+  const sanitizedFileName = sanitizeFileName(fileName);
+  const fileKey = `users/${userId}/${Date.now()}-${sanitizedFileName}`;
   const putCommand = new PutObjectCommand({
     Bucket: process.env.S3_BUCKET_NAME,
     Key: fileKey,
