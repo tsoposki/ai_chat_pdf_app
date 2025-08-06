@@ -15,7 +15,7 @@ const DashboardBar = async () => {
         <div className="flex items-center justify-between h-full">
           <div className="flex">
             <BookOpenCheck className="text-black w-7 h-7 mr-3" />
-            <span className="text-lg font-medium text-black">PDF.wisdom</span>
+            <span className="text-lg font-medium text-black">AI Chat PDF</span>
           </div>
 
           <div className="flex">

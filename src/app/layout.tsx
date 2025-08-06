@@ -32,6 +32,6 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  title: "PDF Wisdom",
+  title: "AI Chat PDF",
   description: "Chat with Document",
 };
