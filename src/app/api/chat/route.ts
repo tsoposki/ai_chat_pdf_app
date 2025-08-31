@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
   );
 
   const model = new ChatOpenAI({
-    modelName: "gpt-4.1-nano",
+    modelName: "gpt-5-mini",
     streaming: true,
     callbackManager: CallbackManager.fromHandlers(handlers),
     temperature: 0.1
