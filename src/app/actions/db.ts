@@ -10,7 +10,7 @@ import { needToUpgrade } from "@/lib/subscription";
 export const createDocument = async (fileName: string, fileSize: number, fileKey: string) => {
     const user = await currentUser();
 
-    if (!user?.id || !user.firstName) {
+    if (!user?.id) {
       throw new Error("Unauthorized");
     }
 
@@ -22,7 +22,7 @@ export const createDocument = async (fileName: string, fileSize: number, fileKey
     const document = await prismadb.document.create({
       data: {
         userId: user.id,
-        userName: user.firstName,
+        userName: user.id,
         fileName,
         fileSize,
         fileKey,

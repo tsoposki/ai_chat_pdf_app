@@ -41,13 +41,14 @@ export async function POST(req: NextRequest) {
     modelName: "gpt-4.1-nano",
     streaming: true,
     callbackManager: CallbackManager.fromHandlers(handlers),
+    temperature: 0.1
   });
 
   const chain = VectorDBQAChain.fromLLM(model, vectorStore, {
     k: 3,
     returnSourceDocuments: true,
   });
-  
+
   const response = await chain.invoke({ query });
   if (response) {
     // Create message from assistant
