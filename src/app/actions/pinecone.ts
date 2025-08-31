@@ -10,59 +10,59 @@ import { getS3Url } from "./s3";
 import { OpenAIEmbeddings } from "@langchain/openai";
 import { needToUpgrade } from "@/lib/subscription";
 
-export const embedPDFToPinecone = async (fileKey: string) => {
-  const { userId } = await auth();
+export const embedPDFToPinecone = async (fileKey: string): Promise<{ ok: true } | { ok: false; error: string }> => {
+  try {
+    const { userId } = await auth();
 
-  if (!userId) {
-    throw new Error("Unauthorized");
+    if (!userId) {
+      return { ok: false, error: "Unauthorized" };
+    }
+
+    const quotaReached = await needToUpgrade();
+    if (quotaReached) {
+      return { ok: false, error: "Reached free quota. Please upgrade." };
+    }
+
+    let pdfFile = await fetch(await getS3Url(fileKey));
+
+    const blob = new Blob([await pdfFile.arrayBuffer()], { type: "application/pdf" });
+    const loader = new PDFLoader(blob);
+
+    const docs = await loader.load();
+
+    const trimmedDocs = docs.map((doc) => {
+      const metadata = { ...doc.metadata };
+      delete (metadata as any).pdf;
+      return new Document({
+        pageContent: doc.pageContent,
+        metadata,
+      })
+    });
+
+    const splitter = new CharacterTextSplitter({
+      separator: " ",
+      chunkSize: 500,
+      chunkOverlap: 10,
+    });
+
+    const splitDocs = await splitter.splitDocuments(trimmedDocs);
+
+    const pinecone = new Pinecone({
+      apiKey: process.env.PINECONE_API_KEY!,
+    });
+
+    const index = pinecone.index(process.env.PINECONE_INDEX!);
+
+    await PineconeStore.fromDocuments(splitDocs, new OpenAIEmbeddings(), {
+      pineconeIndex: index,
+      namespace: fileKey,
+    });
+
+    return { ok: true };
+  } catch (error: any) {
+    try { console.error("embedPDFToPinecone error", { message: error?.message }); } catch {}
+    return { ok: false, error: "Failed to embed document" };
   }
-
-  const quotaReached = await needToUpgrade();
-  if (quotaReached) {
-    throw new Error("Reached free quota. Please upgrade.");
-  }
-
-  let pdfFile = await fetch(await getS3Url(fileKey));
-
-  const blob = new Blob([await pdfFile.arrayBuffer()], { type: "application/pdf" });
-  const loader = new PDFLoader(blob);
-
-  const docs = await loader.load();
-
-  // Step #1B - Trim useless metadata for each document
-  const trimmedDocs = docs.map((doc) => {
-    const metadata = { ...doc.metadata };
-    delete metadata.pdf;
-    return new Document({
-      pageContent: doc.pageContent,
-      metadata,
-    })
-  });
-
-  // Step #2 - Split the documents into smaller chunks
-
-  const splitter = new CharacterTextSplitter({
-    separator: " ",
-    chunkSize: 500,
-    chunkOverlap: 10,
-  });
-
-  const splitDocs = await splitter.splitDocuments(trimmedDocs);
-
-  // Step #3 - Initialize Pinecone
-
-  const pinecone = new Pinecone({
-    apiKey: process.env.PINECONE_API_KEY!,
-  });
-
-  // Step #4 - Connect to the Pinecone Index
-  const index = pinecone.index(process.env.PINECONE_INDEX!);
-
-  // Step #5 - Embed and store the documents in Pinecone
-  await PineconeStore.fromDocuments(splitDocs, new OpenAIEmbeddings(), {
-    pineconeIndex: index,
-    namespace: fileKey,
-  });
 };
 
 export const deletePineconeNamespace = async (fileKey: string) => {

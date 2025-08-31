@@ -105,11 +105,31 @@ const UploadPDF = () => {
   };
 
   const processPDF = async (file: File | Blob, fileName: string, fileSize: number, fileType: string) => {
-    const { putUrl, fileKey } = await generatePreSignedURL(fileName, fileType);
-    await uploadPDFToS3(file, putUrl, fileKey);
-    await embedPDFToPinecone(fileKey);
-    const { document } = await createDocument(fileName, fileSize, fileKey);
+    const presign = await generatePreSignedURL(fileName, fileType);
+    if (!presign.ok) {
+      showToast(presign.error);
+      return;
+    }
 
+    const s3Result = await uploadPDFToS3(file, presign.putUrl, presign.fileKey);
+    if (!s3Result.success) {
+      return;
+    }
+
+    const embed = await embedPDFToPinecone(presign.fileKey);
+    if (!embed.ok) {
+      showToast(embed.error);
+      return;
+    }
+
+    const created = await createDocument(fileName, fileSize, presign.fileKey);
+    if (!("ok" in created) || !created.ok) {
+      const message = (created as any)?.error ?? "Failed to save document";
+      showToast(message);
+      return;
+    }
+
+    const { document } = created;
     if (document) {
       showToast(`Document uploaded successfully: ${document.fileName}`);
       router.push(`/documents/${document.id}`);
