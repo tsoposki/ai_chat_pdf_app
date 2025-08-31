@@ -25,9 +25,103 @@ export const Chat = ({ document }: ChatProps) => {
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
+  // Typewriter state for the latest assistant message
+  const typingMessageIdRef = useRef<string | null>(null);
+  const typingIntervalRef = useRef<number | null>(null);
+  const [displayedAssistantContent, setDisplayedAssistantContent] = React.useState<string>("");
+  const [shouldTypewriteLastAssistant, setShouldTypewriteLastAssistant] = React.useState<boolean>(false);
+  const prevMessageIdsRef = useRef<string[]>([]);
+  const hasInitializedRef = useRef<boolean>(false);
+
+  const lastAssistantMessage = React.useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === "assistant") return messages[i];
+    }
+    return null;
+  }, [messages]);
+
   useEffect(() => {
     scrollToBottom(messagesEndRef);
   }, [messages]);
+
+  // Keep autoscrolling while characters are being typed
+  useEffect(() => {
+    scrollToBottom(messagesEndRef);
+  }, [displayedAssistantContent]);
+
+  // Determine when a new assistant message is appended, and only then typewrite
+  useEffect(() => {
+    const currentIds = messages.map((m) => m.id);
+    if (!hasInitializedRef.current) {
+      prevMessageIdsRef.current = currentIds;
+      hasInitializedRef.current = true;
+      setShouldTypewriteLastAssistant(false);
+      return;
+    }
+
+    const prevIds = prevMessageIdsRef.current;
+    const prevLength = prevIds.length;
+    const currentLength = currentIds.length;
+
+    // Update the ref for next time
+    prevMessageIdsRef.current = currentIds;
+
+    // Only consider when a message is added
+    if (currentLength <= prevLength) {
+      return;
+    }
+
+    // If the last message is a newly appended assistant message, enable typewriter
+    const lastMessage = messages[messages.length - 1];
+    if (lastMessage && lastMessage.role === "assistant" && !prevIds.includes(lastMessage.id)) {
+      setShouldTypewriteLastAssistant(true);
+      typingMessageIdRef.current = lastMessage.id;
+      setDisplayedAssistantContent("");
+      if (typingIntervalRef.current) {
+        window.clearInterval(typingIntervalRef.current);
+        typingIntervalRef.current = null;
+      }
+    } else {
+      setShouldTypewriteLastAssistant(false);
+    }
+  }, [messages]);
+
+  // Drive the typewriter effect. Continues while streaming and stops when complete.
+  useEffect(() => {
+    if (!lastAssistantMessage) return;
+    if (!shouldTypewriteLastAssistant) return;
+    if (typingIntervalRef.current) return;
+
+    typingIntervalRef.current = window.setInterval(() => {
+      setDisplayedAssistantContent((current) => {
+        const target = lastAssistantMessage.content || "";
+        const currentLength = current.length;
+
+        if (typingMessageIdRef.current !== lastAssistantMessage.id) {
+          return "";
+        }
+
+        if (currentLength >= target.length) {
+          if (!isLoading && typingIntervalRef.current) {
+            window.clearInterval(typingIntervalRef.current);
+            typingIntervalRef.current = null;
+          }
+          return current;
+        }
+
+        const increment = target.length > 1200 ? 3 : target.length > 400 ? 2 : 1;
+        const next = target.slice(0, currentLength + increment);
+        return next;
+      });
+    }, 16);
+
+    return () => {
+      if (typingIntervalRef.current) {
+        window.clearInterval(typingIntervalRef.current);
+        typingIntervalRef.current = null;
+      }
+    };
+  }, [lastAssistantMessage, isLoading, shouldTypewriteLastAssistant]);
 
   return (
     <div className="w-1/2 h-[calc(100vh-60px)]">
@@ -84,7 +178,19 @@ export const Chat = ({ document }: ChatProps) => {
                             }
                           }
                         };
-                        return <a {...props} onClick={onClick} className="text-blue-600 hover:underline cursor-pointer" />;
+                        // Open navigational links in a new tab by default (except for in-PDF jumps)
+                        const text = (typeof props.children === 'string') ? props.children : '';
+                        const isPdfJump = /^page:(\d+)$/.test(href) || !!(href.match(/(стр\.|p\.)\s*(\d+)/i) || (typeof text === 'string' ? text.match(/(стр\.|p\.)\s*(\d+)/i) : null));
+                        const openInNewTab = !isPdfJump;
+                        return (
+                          <a
+                            {...props}
+                            onClick={onClick}
+                            target={openInNewTab ? "_blank" : undefined}
+                            rel={openInNewTab ? "noopener noreferrer" : undefined}
+                            className="text-blue-600 hover:underline cursor-pointer"
+                          />
+                        );
                       },
                       table: (props) => <table className="w-full text-left border-collapse my-3" {...props} />,
                       thead: (props) => <thead className="border-b border-gray-200" {...props} />,
@@ -93,7 +199,9 @@ export const Chat = ({ document }: ChatProps) => {
                       code: (props) => <code className="font-mono bg-gray-50 px-1 py-0.5 rounded" {...props} />,
                     }}
                   >
-                    {message.content}
+                    {message.role === "assistant" && lastAssistantMessage && message.id === lastAssistantMessage.id && shouldTypewriteLastAssistant
+                      ? displayedAssistantContent
+                      : message.content}
                   </ReactMarkdown>
                 </div>
               </div>
