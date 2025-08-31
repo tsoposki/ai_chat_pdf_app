@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { Pinecone } from "@pinecone-database/pinecone";
 import { ChatOpenAI, OpenAIEmbeddings } from "@langchain/openai";
 import { PineconeStore } from "@langchain/pinecone";
-import { VectorDBQAChain } from "langchain/chains";
-import { CallbackManager } from "@langchain/core/callbacks/manager";
-import { StreamingTextResponse, LangChainStream } from "ai";
+import { RunnableSequence } from "@langchain/core/runnables";
+import { StringOutputParser } from "@langchain/core/output_parsers";
+// Using NextResponse for now - streaming can be added later
 import { Role } from "@/generated/prisma";
 import prismadb from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
@@ -25,12 +25,13 @@ export async function POST(req: NextRequest) {
   // Create message from user
   await saveMessage(documentId, Role.user, query, userId);
 
-  const { stream, handlers } = LangChainStream();
   const pinecone = new Pinecone();
   const index = pinecone.index(process.env.PINECONE_INDEX!);
 
-  const vectorStore = await PineconeStore.fromExistingIndex(
-    new OpenAIEmbeddings(), 
+    const vectorStore = await PineconeStore.fromExistingIndex(
+    new OpenAIEmbeddings({
+      modelName: "text-embedding-3-large", // Match Pinecone index (3072 dims)
+    }),
     {
       pineconeIndex: index,
       namespace: fileKey,
@@ -38,24 +39,95 @@ export async function POST(req: NextRequest) {
   );
 
   const model = new ChatOpenAI({
-    modelName: "gpt-5-mini",
+    modelName: "gpt-4o-mini",
     streaming: true,
-    callbackManager: CallbackManager.fromHandlers(handlers),
-    // temperature: 0.3
+    temperature: 0.1,
   });
 
-  const chain = VectorDBQAChain.fromLLM(model, vectorStore, {
-    k: 3,
-    returnSourceDocuments: true,
+  // Enhanced retrieval with multi-query strategy
+  const retriever = vectorStore.asRetriever({
+    k: 15, // Retrieve more chunks for better coverage
   });
 
-  const response = await chain.invoke({ query });
-  if (response) {
-    // Create message from assistant
-    await saveMessage(documentId, Role.assistant, response.text, userId);
-  }
+  // Function to generate multiple query variations
+  const generateQueryVariations = async (question: string) => {
+    const variations = [
+      question,
+      `What information does the document contain about ${question}?`,
+      `Explain ${question} based on the document content.`,
+      `Find details related to ${question} in the text.`,
+    ];
+    return variations;
+  };
 
-  return new StreamingTextResponse(stream);
+  const chain = RunnableSequence.from([
+    {
+      context: async (input: { question: string }) => {
+        const queryVariations = await generateQueryVariations(input.question);
+
+        // Get documents for each query variation
+        const allDocs = [] as any[];
+        for (const query of queryVariations) {
+          const docs = await retriever.getRelevantDocuments(query);
+          allDocs.push(...docs);
+        }
+
+        // Remove duplicates and limit total context
+        const uniqueDocs = allDocs.filter((doc, index, self) =>
+          index === self.findIndex(d => d.pageContent === doc.pageContent)
+        );
+
+        // Sort by relevance score and take top chunks
+        const topDocs = uniqueDocs.slice(0, 12);
+
+        const pageNumbers = Array.from(new Set(
+          topDocs
+            .map((d: any) => d?.metadata?.pageNumber ?? d?.metadata?.loc?.pageNumber ?? d?.metadata?.page)
+            .filter((p: any) => p !== undefined && p !== null)
+        ));
+
+        return {
+          context: topDocs.map(doc => doc.pageContent).join('\n\n'),
+          sourcePages: pageNumbers.sort(),
+        };
+      },
+      question: (input: { question: string }) => input.question,
+    },
+    async (input) => {
+      const prompt = `You are an expert assistant for answering questions about a PDF. Work strictly from the provided context and respond in the same language as the user question (auto-detect).
+
+Context:
+${input.context?.context ?? input.context}
+
+User question:
+${input.question}
+
+Formatting rules (very important):
+- Use clean Markdown.
+- Start with a short 1–2 sentence answer.
+- Then add clearly labeled sections using headings (###) and bullet points.
+- For figures/metrics, use bullet points with bold labels (e.g., **Revenue**: ...). Use tables when appropriate.
+- Keep paragraphs short; avoid redundant preambles.
+- If information is missing in the context, explicitly state what is missing.
+
+
+Return only the formatted Markdown.`;
+
+      return model.invoke(prompt);
+    },
+    new StringOutputParser(),
+  ]);
+
+  // Generate response
+  const response = await chain.invoke({ question: query });
+
+  // Create message from assistant
+  await saveMessage(documentId, Role.assistant, response, userId);
+
+  // Return plain text so the chat hook doesn't render JSON
+  return new Response(response, {
+    headers: { "Content-Type": "text/plain; charset=utf-8" },
+  });
 }
 
 async function saveMessage(documentId: string, role: Role, content: string, userId: string) {

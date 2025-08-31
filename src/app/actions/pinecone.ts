@@ -3,7 +3,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { PDFLoader } from "@langchain/community/document_loaders/fs/pdf";
 import { Document } from "langchain/document";
-import { CharacterTextSplitter } from "langchain/text_splitter";
+import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
 import { Pinecone } from "@pinecone-database/pinecone";
 import { PineconeStore } from "@langchain/pinecone";
 import { getS3Url } from "./s3";
@@ -30,19 +30,40 @@ export const embedPDFToPinecone = async (fileKey: string): Promise<{ ok: true } 
 
     const docs = await loader.load();
 
-    const trimmedDocs = docs.map((doc) => {
-      const metadata = { ...doc.metadata };
-      delete (metadata as any).pdf;
+    const trimmedDocs = docs.map((doc, idx) => {
+      const { pdf, ...rest } = doc.metadata as any;
+      // Clean up the text content - preserve technical characters and symbols
+      let cleanedContent = doc.pageContent
+        .replace(/\s+/g, ' ')  // Normalize whitespace
+        .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')  // Remove only control characters
+        .trim();
+
       return new Document({
-        pageContent: doc.pageContent,
-        metadata,
-      })
+        pageContent: cleanedContent,
+        metadata: {
+          ...rest,
+          pageNumber: rest?.loc?.pageNumber ?? rest?.pageNumber ?? idx + 1,
+          source: rest?.source ?? fileKey,
+          chunkIndex: idx,
+          totalPages: docs.length,
+        },
+      });
     });
 
-    const splitter = new CharacterTextSplitter({
-      separator: " ",
-      chunkSize: 500,
-      chunkOverlap: 10,
+    // Optimized chunking for better retrieval
+    const splitter = new RecursiveCharacterTextSplitter({
+      separators: [
+        "\n\n## ", // Section headers
+        "\n\n# ",  // Main headers
+        "\n\n",    // Paragraph breaks
+        "\n",      // Line breaks
+        ". ",      // Sentence endings
+        " ",       // Word boundaries
+        "",        // Character level (fallback)
+      ],
+      chunkSize: 2000,     // Larger chunks for better context
+      chunkOverlap: 300,   // More overlap for continuity
+      keepSeparator: true, // Preserve separators in chunks
     });
 
     const splitDocs = await splitter.splitDocuments(trimmedDocs);
@@ -53,7 +74,9 @@ export const embedPDFToPinecone = async (fileKey: string): Promise<{ ok: true } 
 
     const index = pinecone.index(process.env.PINECONE_INDEX!);
 
-    await PineconeStore.fromDocuments(splitDocs, new OpenAIEmbeddings(), {
+    await PineconeStore.fromDocuments(splitDocs, new OpenAIEmbeddings({
+      modelName: "text-embedding-3-large", // Latest and most accurate for complex documents
+    }), {
       pineconeIndex: index,
       namespace: fileKey,
     });
@@ -82,7 +105,9 @@ export const deletePineconeNamespace = async (fileKey: string) => {
 
   const index = pinecone.index(process.env.PINECONE_INDEX!);
 
-  const vectorStore = await PineconeStore.fromExistingIndex(new OpenAIEmbeddings(), {
+  const vectorStore = await PineconeStore.fromExistingIndex(new OpenAIEmbeddings({
+    modelName: "text-embedding-3-large",
+  }), {
     pineconeIndex: index,
     namespace: fileKey,
   });
