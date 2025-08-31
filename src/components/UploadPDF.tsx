@@ -226,7 +226,7 @@ const UploadPDF = () => {
               value={url}
               onChange={handleUrlChange}
               className="font-light"
-              placeholder='"https://cdn.openai.com/papers/gpt-4.pdf'
+              placeholder="https://cdn.openai.com/papers/gpt-4.pdf"
             />
           </div>
 
