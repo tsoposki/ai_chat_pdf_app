@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
     modelName: "gpt-5-mini",
     streaming: true,
     callbackManager: CallbackManager.fromHandlers(handlers),
-    temperature: 0.1
+    temperature: 0.3
   });
 
   const chain = VectorDBQAChain.fromLLM(model, vectorStore, {
