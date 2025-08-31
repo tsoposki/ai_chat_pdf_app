@@ -94,7 +94,18 @@ export async function POST(req: NextRequest) {
       question: (input: { question: string }) => input.question,
     },
     async (input) => {
-      const prompt = `You are an expert assistant for answering questions about a PDF. Work strictly from the provided context and respond in the same language as the user question (auto-detect).
+      // Heuristics:
+      // - If Cyrillic text includes Macedonian-specific letters → Macedonian
+      // - Else if Cyrillic text lacks Bulgarian-specific letters (я, ю, ъ, щ) → Macedonian
+      // - Otherwise → auto-detect
+      const hasCyrillic = /[\u0400-\u04FF]/.test(input.question);
+      const hasMacedonianSpecific = /[\u0403\u040C\u0405\u0408\u0409\u040A\u040F\u0453\u045C\u0455\u0458\u0459\u045A\u045F]/.test(input.question); // ЃЌЅЈЉЊЏѓќѕјљњџ
+      const hasBulgarianSpecific = /[\u044F\u042F\u044E\u042E\u044A\u042A\u0449\u0429]/.test(input.question); // яЯ юЮ ъЪ щЩ
+      const preferMacedonian = hasCyrillic && (hasMacedonianSpecific || !hasBulgarianSpecific);
+      const languageInstruction = preferMacedonian
+        ? "Respond in Macedonian (mk), unless the user asks the question in another language."
+        : "Respond in the same language as the user question (auto-detect).";
+      const prompt = `You are an expert assistant for answering questions about a PDF. Work strictly from the provided context. ${languageInstruction}
 
 Context:
 ${input.context?.context ?? input.context}
